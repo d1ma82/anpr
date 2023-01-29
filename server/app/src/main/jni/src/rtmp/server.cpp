@@ -9,7 +9,7 @@ rtmp::Server::Server(const char* server_input): server{server_input} {
        return;
     }
     out_codec_ctx = Codec { avcodec_alloc_context3(out_codec), [] (AVCodecContext* ctx) { avcodec_close(ctx); avcodec_free_context(&ctx); } };
-    format = Format{[] () {
+    format = Format{[this] () {
 
             AVFormatContext *ctx {};
             CALL(avformat_alloc_output_context2(&ctx, nullptr, "flv", nullptr))

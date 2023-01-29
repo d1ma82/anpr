@@ -1,7 +1,7 @@
 #include <thread>
 
 #include "ffmpeg_filter.h"
-#include "rtmp.h"
+#include "rtmp/server.h"
 
 static bool thread_start {false};
 static bool frame_available {false};
@@ -12,12 +12,12 @@ static void run(
     int bitrate, 
     const cv::Mat* const input, 
     dims dst, 
-    const char* server
+    const char* url
 ) {
-    LOGI("Start server %s; src= %dx%d fps= %d; dst= %dx%d\n",server, src.first, src.second, fps.first, dst.first, dst.second);
+    LOGI("Start server %s; src= %dx%d fps= %d; dst= %dx%d\n",url, src.first, src.second, fps.first, dst.first, dst.second);
 
     av_log_set_level(AV_LOG_TRACE);
-    RTMP rtmp(server);
+    rtmp::Server srv(url);
     Scaler scaler = {[] (int src_width, 
                          int src_height, 
                          enum AVPixelFormat srcFormat,
@@ -30,15 +30,15 @@ static void run(
             if (!ctx) LOGE("Could not init sample scaler\n")
             return ctx;
 
-        } (src.first, src.second, AV_PIX_FMT_RGBA, dst.first, dst.second, rtmp.out_pixel_fmt, SWS_BILINEAR), sws_freeContext
+        } (src.first, src.second, AV_PIX_FMT_RGBA, dst.first, dst.second, srv.out_pixel_fmt, SWS_BILINEAR), sws_freeContext
     };
     
     Picture pic(AV_PIX_FMT_YUV420P, dst.first, dst.second);
     LOGI("Listen incomings\n")
-    if (!rtmp.listen()) return;
+    if (!srv.listen()) return;
     LOGI("Begin stream\n")
-    rtmp.begin_stream(dst.first, dst.second, fps.first, bitrate);
-    rtmp.start_time=rtmp.clk.now();
+    srv.begin_stream(dst.first, dst.second, fps.first, bitrate);
+    srv.start_time=srv.clk.now();
 
     while (thread_start) {
         // stream frames
@@ -46,12 +46,12 @@ static void run(
         
         const int stride[] {static_cast<int>(input->step1())};
         int ret=sws_scale(scaler.get(), &input->data, stride, 0, src.second, pic->data, pic->linesize);
-        if (!rtmp.encode_and_write_frame(pic)) break;
+        if (!srv.encode_and_write_frame(pic)) break;
         // proccess frames
         frame_available = false;
     }
     thread_start=false;
-    LOGI("Stream total: %f sec\n", pic->pts*av_q2d(rtmp.out_codec_ctx->time_base))
+    LOGI("Stream total: %f sec\n", pic->pts*av_q2d(srv.out_codec_ctx->time_base))
 }
 
 filter::RTMP::RTMP(

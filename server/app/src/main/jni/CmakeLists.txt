@@ -13,6 +13,8 @@ set(CMAKE_TOOLCHAIN_FILE "${ANDROID_SDK_ROOT}/ndk/android-ndk-r21e/build/cmake/a
 add_definitions(-std=c++17)
 
 project(anpr)
+set(ROOT "D:/git/kotlin/${PROJECT_NAME}")
+
 file(GLOB SRC 
   "./src/camera.cpp"
   "./src/main.cpp"
@@ -20,7 +22,7 @@ file(GLOB SRC
   "./src/opencl.cpp"
   "./src/opengl.cpp"
   "./src/ffmpeg_filter.cpp"
-  "./src/rtmp.cpp"
+  "./src/rtmp/server.cpp"
 )
 
 add_library(${PROJECT_NAME} SHARED ${SRC})
@@ -58,7 +60,7 @@ target_link_libraries(${PROJECT_NAME}
   ${gl-lib}
   ${egl-lib}
   ${android-lib}
-  "D:/git/kotlin/anpr/app/src/main/jni/libOpenCL.so"
+  "${ROOT}/server/app/src/main/jni/libOpenCL.so"
   log
 ) 
 
@@ -67,17 +69,17 @@ target_compile_definitions(${PROJECT_NAME}
   PRIVATE CL_TARGET_OPENCL_VERSION=200
 )
 
-
+#Copy FFMPEG libs
 set(i 0)
 
 foreach(lib ${ffmpeg_LIBS})
 
-  set(lib_path "D:/git/kotlin/${PROJECT_NAME}/app/src/main/jniLibs/${ANDROID_ABI}/lib${lib}.so")
+  set(lib_path "${ROOT}/server/app/src/main/jniLibs/${ANDROID_ABI}/lib${lib}.so")
   
   if(NOT EXISTS ${lib_path})
     message(STATUS "Copy: " ${lib_path})
     file(COPY "${ffmpeg_DIR}/lib/lib${lib}.so" 
-         DESTINATION "D:/git/kotlin/${PROJECT_NAME}/app/src/main/jniLibs/${ANDROID_ABI}/" )
+         DESTINATION "${ROOT}/server/app/src/main/jniLibs/${ANDROID_ABI}/" )
   endif()
 
   math(EXPR i "${i}+1" OUTPUT_FORMAT DECIMAL)
