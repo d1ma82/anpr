@@ -3,12 +3,17 @@ min API 24 req
 
 An example of ANPR system using NDK Camera2 API.
 The algorithm in the first approximation looks like this:
+Server:
 1. Connect camera
 2. Get frame via OpenGL
 3. Read from OpenGL to OpenCV
-4. Proccess frame
-5. Load back to OpenGL
-6. Show
+4. Draw region of interest
+5. Create RTMP server
+Client:
+1. Connect to server
+2. Get frame
+3. Proccess it throw anpr algorithm
+4. Show result
 
 While proccess frame we use Sobel filter to detect vertical edges, next
 via close operation find possible regions.
