@@ -1,0 +1,91 @@
+cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
+
+cmake_path(CONVERT $ENV{COMPILER} TO_CMAKE_PATH_LIST COMPILER)
+set(CMAKE_CXX_COMPILER "${COMPILER}/clang++.exe")
+set(CMAKE_C_COMPILER "${COMPILER}/clang.exe")
+set(CMAKE_RC_COMPILER "${COMPILER}/llvm-rc.exe")
+
+set(ffmpeg_DIR "D:/source/FFMPEG/x86_64")
+set(OpenCV_DIR "D:/source/opencv-4.6.0/build/x86_64/install")
+set(glfw3_DIR "D:/source/glfw-master/build/x86_64/Release/lib/cmake/glfw3")
+
+set(CMAKE_BUILD_TYPE Release)
+
+add_definitions(-std=c++17)
+
+project(anpr)
+set(ROOT "D:/git/kotlin/${PROJECT_NAME}")
+
+file(GLOB SRC 
+"./src/main.cpp"
+"${ROOT}/server/app/src/main/jni/src/rtmp/client.cpp"
+"D:/source/glad/src/glad.cpp")
+
+add_executable(${PROJECT_NAME} ${SRC})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "../bin")
+
+
+set(OpenCV_ARCH "x64")
+set(OpenCV_RUNTIME "vc17")
+find_package(OpenCV REQUIRED core imgcodecs imgproc highgui videoio ml dnn)
+find_package(glfw3 CONFIG REQUIRED)
+
+set(ffmpeg_LIBS avformat avcodec avutil swresample swscale)
+set(ffmpeg_VER 59 59 57 4 6)
+
+
+target_include_directories(${PROJECT_NAME} 
+
+  PRIVATE "./src/"
+  PRIVATE "${ROOT}/server/app/src/main/jni/src"
+  PRIVATE "D:/source/glad/include"
+  PRIVATE "D:/source/glfw-master/build/x86_64/Release/include"
+  PRIVATE ${OpenCV_INCLUDE_DIRS}
+  PRIVATE "${ffmpeg_DIR}/include"
+)
+
+target_link_directories(${PROJECT_NAME} 
+
+  PRIVATE "${ffmpeg_DIR}/bin"
+)
+
+target_link_libraries(${PROJECT_NAME} 
+  
+  ${ffmpeg_LIBS}
+  ${OpenCV_LIBS}
+  "D:/source/glfw-master/build/x86_64/Release/lib/glfw3.lib"
+) 
+
+# Copy OpenCV shared libs
+
+if (NOT OpenCV_STATIC)
+  set(ver "${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}${OpenCV_VERSION_PATCH}")
+  foreach(lib ${OpenCV_LIBS})
+    
+    set(lib_path "${ROOT}/client/bin/${lib}${ver}.dll")
+    if(NOT EXISTS ${lib_path})
+    message(STATUS "Copy: " ${lib_path})
+      file(COPY "${OpenCV_DIR}/${OpenCV_ARCH}/${OpenCV_RUNTIME}/bin/${lib}${ver}.dll" 
+         DESTINATION "${ROOT}/client/bin/" )
+    endif()
+  endforeach()
+endif()  
+
+# Copy FFMPEG Libs
+
+set(i 0)
+
+foreach(lib ${ffmpeg_LIBS})
+
+  list(GET ffmpeg_VER ${i} ver)
+  set(lib_path "${ROOT}/client/bin/${lib}-${ver}.dll")
+  
+  if(NOT EXISTS ${lib_path})
+    message(STATUS "Copy: " ${lib_path})
+    file(COPY "${ffmpeg_DIR}/bin/${lib}-${ver}.dll" 
+         DESTINATION "${ROOT}/client/bin/" )
+  endif()
+
+  math(EXPR i "${i}+1" OUTPUT_FORMAT DECIMAL)
+endforeach()

@@ -1,0 +1,84 @@
+cmake_minimum_required(VERSION 3.21)
+
+set(ANDROID_ABI "arm64-v8a")
+#set(ANDROID_ABI "x86_64")
+set(ffmpeg_DIR "D:/source/FFMPEG/${ANDROID_ABI}")
+set(OpenCV_DIR "D:/source/opencv-4.6.0/build/${ANDROID_ABI}/install/sdk/native/jni")
+
+cmake_path(CONVERT $ENV{ANDROID_SDK_ROOT} TO_CMAKE_PATH_LIST ANDROID_SDK_ROOT)
+set(ANDROID_PLATFORM "24")
+set(CMAKE_TOOLCHAIN_FILE "${ANDROID_SDK_ROOT}/ndk/android-ndk-r21e/build/cmake/android.toolchain.cmake")
+#set(CMAKE_BUILD_TYPE Debug)
+
+add_definitions(-std=c++17)
+
+project(anpr)
+file(GLOB SRC 
+  "./src/camera.cpp"
+  "./src/main.cpp"
+  "./src/manager.cpp"
+  "./src/opencl.cpp"
+  "./src/opengl.cpp"
+  "./src/ffmpeg_filter.cpp"
+  "./src/rtmp.cpp"
+)
+
+add_library(${PROJECT_NAME} SHARED ${SRC})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES 
+					  LIBRARY_OUTPUT_DIRECTORY "../../jniLibs/${ANDROID_ABI}")
+
+set(ffmpeg_LIBS avformat avcodec avutil swresample swscale)
+
+find_package(OpenCV REQUIRED core imgproc)  # imgcodecs ml dnn
+
+find_library(camera-lib camera2ndk)
+find_library(android-lib android)
+find_library(gl-lib GLESv3)
+find_library(egl-lib EGL)
+
+target_include_directories(${PROJECT_NAME} 
+
+  PRIVATE "./src"
+  PRIVATE "D:/source/OpenCL/OpenCL-Headers-main"
+  PRIVATE ${OpenCV_INCLUDE_DIRS}
+  PRIVATE "${ffmpeg_DIR}/include"
+)
+
+target_link_directories(${PROJECT_NAME} 
+
+  PRIVATE "${ffmpeg_DIR}/lib"
+)
+
+target_link_libraries(${PROJECT_NAME} 
+
+  ${ffmpeg_LIBS}
+  ${OpenCV_LIBS}
+  ${camera-lib}  
+  ${gl-lib}
+  ${egl-lib}
+  ${android-lib}
+  "D:/git/kotlin/anpr/app/src/main/jni/libOpenCL.so"
+  log
+) 
+
+target_compile_definitions(${PROJECT_NAME}
+
+  PRIVATE CL_TARGET_OPENCL_VERSION=200
+)
+
+
+set(i 0)
+
+foreach(lib ${ffmpeg_LIBS})
+
+  set(lib_path "D:/git/kotlin/${PROJECT_NAME}/app/src/main/jniLibs/${ANDROID_ABI}/lib${lib}.so")
+  
+  if(NOT EXISTS ${lib_path})
+    message(STATUS "Copy: " ${lib_path})
+    file(COPY "${ffmpeg_DIR}/lib/lib${lib}.so" 
+         DESTINATION "D:/git/kotlin/${PROJECT_NAME}/app/src/main/jniLibs/${ANDROID_ABI}/" )
+  endif()
+
+  math(EXPR i "${i}+1" OUTPUT_FORMAT DECIMAL)
+endforeach()
