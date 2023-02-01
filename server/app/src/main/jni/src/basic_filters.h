@@ -4,7 +4,9 @@
 #include <opencv2/imgcodecs.hpp>
 
 #include "filter.h"
+
 #include "assets.h"
+
 #include "opengl.h"
 #include "opencl.h"
 #include "log.h"
@@ -79,9 +81,11 @@ public:
         freeCL();
     }
 
-    cv::UMat frame() noexcept { return frame_pix; }
+    cv::UMat frame() const noexcept { return frame_pix; }
+    dims get_viewport() const noexcept { return viewport; }
 };
 
+/*
 // When use this filter need to define IMAGE
 class Image: public Input {
 public:
@@ -110,54 +114,51 @@ public:
 
     void apply(int) {}
     cv::UMat frame() const noexcept { return frame_pix;}
-};
+};*/
 
 /**
  *  Draw a rectangle(ROI) in a center of picture
 */
-class Rect : public Filter {
+class ROI : public Filter {
 public:
     cv::Rect        roi;
     Filter*         input;
-    const dims&     viewport;
     static const int DIV=4;
     int x1, x2, y1, y2, cx, cy;
 
-    Rect(Input* filter_in, const dims& viewport_in): 
-        input{filter_in}, viewport{viewport_in}  {
+    ROI(Input* filter_in): input{filter_in}  {
         
-        bool wide = ((float)viewport.first/viewport.second) > (16.0f/9-0.00001f);
+        const dims viewport {filter_in->get_viewport()};
         cx=viewport.first/2;
-        cy=viewport.second/(wide? 2: 3);                   // Мы используем канву, а она может быть больше экрана
+        cy=viewport.second/2;
         x1=(viewport.first/DIV);
-        y1=(viewport.second/DIV);
+        y1=(viewport.second/(DIV));
         x2=cx+(cx-x1);
-        y2=cy+(cy-y1);
+        y2=cy;//cy+(cy-y1);
         roi     =   cv::Rect(cv::Point2i(x1, y1), cv::Point2i(x2, y2));
-        LOGI("%d, %d, %d, %d, %s", viewport.first, viewport.second, roi.width, roi.height, wide? "true": "false")
+        LOGI("%d, %d, %d, %d", viewport.first, viewport.second, roi.width, roi.height)
     }
 
     void apply(int) {
 
-        cv::rectangle(input->frame(), roi, cv::Scalar(0,255,0));
+        //cv::line(input->frame(), cv::Point(x1, y1), cv::Point(cx, cy), cv::Scalar(0,0,255));
+        //cv::line(input->frame(), cv::Point(x2, y2), cv::Point(cx, cy), cv::Scalar(255,0,255));
+        cv::rectangle(input->frame(), roi, cv::Scalar(255,255,0));
     }
 
-    ~Rect() {}
-    cv::UMat frame() noexcept { return input->frame();}
+    ~ROI() {}
+    cv::UMat frame() const noexcept { return input->frame();}
+    dims get_viewport() const noexcept { return input->get_viewport(); }
 };
 
 class Frame: public Output {
 public:
     Filter*         input;
-    const dims&     viewport;
     GLenum          err;
 
-    Frame(
-        Filter* filter_in, 
-        const dims& viewport_in
-    ):input{filter_in}, viewport{viewport_in} {
+    Frame(Filter* filter_in): input{filter_in} {
 
-        texture = d2_texture(viewport.first, viewport.second, nullptr);
+        texture = d2_texture(input->get_viewport().first, input->get_viewport().second, nullptr);
     } 
 
     void apply(int) {
@@ -172,7 +173,8 @@ public:
     }
 
     ~Frame() { glDeleteTextures(1, &texture); }
-    cv::UMat frame() noexcept { return input->frame(); }
+    cv::UMat frame() const noexcept { return input->frame(); }
+    dims get_viewport() const noexcept { return input->get_viewport(); }
 };
 
 /**
@@ -180,19 +182,13 @@ public:
 */
 class Shot: public Filter {
 public:
-    const dims&     viewport;
     Filter*         input;
     const char*     shot_path;  
     cv::UMat        frame_pix;
 
     Shot(
-        Filter* filter_input, 
-        const char* path,
-        const dims&     viewport_in): 
-            input{filter_input},
-            viewport{viewport_in},
-            shot_path{path} {
-    }
+        Filter* filter_input, const char* path): 
+            input{filter_input},shot_path{path} { }
 
     void apply(int orientation) {
 
@@ -205,7 +201,8 @@ public:
         //cv::imwrite(file_name, file);
     }
 
-    cv::UMat frame() noexcept { return frame_pix;}
+    cv::UMat frame() const noexcept { return frame_pix;}
+    dims get_viewport() const noexcept { return input->get_viewport(); }
     ~Shot() { } 
 };
 }

@@ -1,6 +1,8 @@
 #pragma once
 
+#ifdef ANDROID
 #include <android/asset_manager.h>
+#endif
 
 #include "log.h"
 
@@ -10,6 +12,7 @@ namespace asset {
     inline Asset* manager {nullptr};
 }
 
+#ifdef ANDROID
 class Asset {
     private:
         off_t           count   {0};
@@ -55,3 +58,4 @@ class Asset {
         void close() { delete[] content; count=0; AAsset_close(file); }
         off_t size() const {return count;}
 };
+#endif

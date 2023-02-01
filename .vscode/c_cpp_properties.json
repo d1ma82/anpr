@@ -5,7 +5,11 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "D:\\source\\opencv-4.6.0\\build\\x86_64\\install\\include",
-                "D:\\source\\FFMPEG\\x86_64\\include"
+                "D:\\source\\FFMPEG\\x86_64\\include",
+                "${workspaceFolder}/server/app/src/main/jni/src",
+                "D:/source/OpenCL/OpenCL-Headers/install/include",
+                "D:/source/glfw-master/build/x86_64/Release/include",
+                "D:/source/glad/include"
             ],
             "defines": [
                 "_DEBUG",

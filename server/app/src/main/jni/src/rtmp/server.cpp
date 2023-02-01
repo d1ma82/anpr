@@ -35,7 +35,7 @@ void rtmp::Server::set_options_and_open_encoder(
     out_codec_ctx->pix_fmt      =   out_pixel_fmt;
     out_codec_ctx->framerate    =   dst_fps;
     out_codec_ctx->time_base    =   av_inv_q(dst_fps);
-    out_codec_ctx->bit_rate     =   0;//bitrate;
+    out_codec_ctx->bit_rate     =   bitrate;
 
     if (format->oformat->flags & AVFMT_GLOBALHEADER) out_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
     out_stream->time_base       =   out_codec_ctx->time_base;
@@ -55,6 +55,7 @@ bool rtmp::Server::listen() {
 
         AVDictionary*       options {nullptr};
         CALL(av_dict_set(&options, "listen", "1", 0))
+        CALL(av_dict_set(&options, "timeout", "100", 0))                            // seconds
         CALL(avio_open2(&format->pb, server, AVIO_FLAG_WRITE, nullptr, &options))
         av_dict_free(&options);
     }

@@ -2,20 +2,14 @@
 #include <CL/opencl.h>
 #include <opencv2/core/ocl.hpp>
 
-#ifdef NDEBUG
-
-        #define CALLCL(proc);
-        #define CALLCL(result, proc);
-
-#else
-        #define CALLCL2(result, proc) \
+#define CALLCL2(result, proc) \
                 result=proc;\
                 CLError(err, __LINE__, __FILE__, #proc);
         
-        #define CALLCL(proc) \
+#define CALLCL(proc) \
                 err = proc;\
                 CLError(err, __LINE__, __FILE__, #proc);
-#endif
+
 
 void CLError(cl_int, int, const char*, const char*);
 void initCL(); 

@@ -8,11 +8,13 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/ml.hpp>
 #include <opencv2/dnn.hpp>
+#include <opencv2/highgui.hpp>
 
 //#include "assets.h"
-//#include "anpr_filter.h"
+#include "anpr.h"
+#include "log.h"
 
-#define DEBUG
+
 
 typedef std::vector<std::vector<cv::Point>> Contours;
 typedef cv::GArray<cv::GArray<cv::Point>> GContours;
@@ -333,7 +335,7 @@ static void flood(
 
 void filter::ANPR::detect_plates(cv::UMat& input, Plate& plate) {
 
- /*   // Прежде чем находить вертикальные края, нам нужно преобразовать цветное изображение в
+    // Прежде чем находить вертикальные края, нам нужно преобразовать цветное изображение в
     // изображение в оттенках серого (потому что цвет не может помочь нам в этой задаче) и удалить
     // возможный шум, создаваемый камерой или другим окружающим шумом.
     cv::UMat gray;//(input.rows, input.cols, CV_8UC1);
@@ -371,73 +373,25 @@ void filter::ANPR::detect_plates(cv::UMat& input, Plate& plate) {
         
         auto rect = cv::minAreaRect(*itc);
 
-        if (verify_plate_sizes(rect, 0)) rects.push_back(rect);
+      //  if (verify_plate_sizes(rect, 0)) rects.push_back(rect);
         ++itc;
     }
-#ifdef DEBUG
-    //cv::drawContours(input, contours, -1, cv::Scalar(255,0,0));
-#endif*/
+#ifdef IMGDEBUG
+    cv::drawContours(input, contours, -1, cv::Scalar(255,0,0));
+#endif
     //flood(input, gray, rects, plate);  
 }
 
-G_TYPED_KERNEL(GGray, <cv::GMat(cv::GMat)>, "gray") {
-     static cv::GMatDesc outMeta(cv::GMatDesc in) { return in; }
-};
-
-GAPI_OCL_KERNEL(GOCLGray, GGray) {
-
-    static void run(const cv::UMat& in, cv::UMat& out) { 
-
-        
-       // cv::Mat k(in.rows, in.cols, in.type());
-        LOGI("Input: %dx%d, %d", in.cols, in.rows, in.channels())
-        
-        //cv::Mat t;
-       // cv::cvtColor(in, t, cv::COLOR_BGRA2GRAY);
-       // std::vector<cv::UMat> layers {t, t, t, cv::UMat::zeros(in.rows, in.cols, CV_8U)};
-       // cv::merge(layers, out);
-    }
-};
-
-static auto kernel = cv::gapi::kernels<GOCLGray>();
-
-static cv::GComputation pipeline ([] () {
-
-        cv::GMat in;
-        cv::GMat out       = GGray::on(in); //cv::gapi::BGR2Gray(in);
-       // cv::GMat blured  = cv::gapi::blur(out, cv::Size(5,5));
-        //cv::GMat sobel   = cv::gapi::Sobel(blured, CV_8U, 1, 0, 3, 1, 0);
-        //cv::GMat thresh  = cv::gapi::threshold(sobel, 0, 255, cv::THRESH_OTSU);
-        //cv::Mat elem     = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(17,3));
-        //cv::GMat close   = cv::gapi::morphologyEx(thresh, cv::MORPH_CLOSE, elem);
-        return cv::GComputation(cv::GIn(in), cv::GOut(out));
-});
-
-static cv::Mat a,b;
-
-void filter::ANPR::apply(int orientation) {
+void filter::ANPR::apply(int) {
 
     Plate plate;
-    ROI = input->frame()(ROI_rect);
-
-    if (orientation > 200)                      cv::flip(ROI, ROI, 0);
-    else if (orientation>0 && orientation<200)  cv::flip(ROI, ROI, 1);
-
-    a = ROI.getMat(cv::ACCESS_RW);
-    pipeline.compile(cv::descr_of(ROI), cv::compile_args(kernel))(a,b);
-    //detect_plates(ROI, plate);
+    cv::UMat ROI {input->frame()(roi)};
+    detect_plates(ROI, plate);
     //detect_chars(plate);
     //classify_chars(plate); 
-
-    if (orientation > 200)                      cv::flip(ROI, ROI, 0);
-    else if (orientation>0 && orientation<200)  cv::flip(ROI, ROI, 1);  
 }
 
-filter::ANPR::ANPR(
-        Filter*     filter_in,
-        const dims& viewport_in, 
-        cv::Rect    roi
-): input{filter_in}, viewport{viewport_in}, ROI_rect{roi} {
+filter::ANPR::ANPR(Filter* in, cv::Rect roi_input): input{in}, roi{roi_input} {
         
     //train_plate_detector();
     //if (! asset::manager->open("ml/anpr_10.pb")) return;

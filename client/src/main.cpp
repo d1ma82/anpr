@@ -1,60 +1,54 @@
 #include <iostream>
-
-#include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/dnn.hpp>
 
-#include "rtmp/client.h"
+#include "basic_filters.h"
+#include "player.h"
+#include "anpr.h"
 #include "log.h"
 
-typedef struct {
-    int src_width, src_height;
-    enum AVPixelFormat srcFormat;
-    int dst_width, dst_height;
-    enum AVPixelFormat dstFormat;
-    int flags;
-} ScalerPar;
-
 const char* server = "rtmp://192.168.1.100/live/mystream/";
+static std::vector<filter::Filter*> filters;
+
+static void init() {
+
+    av_log_set_level(AV_LOG_INFO);
+    
+    filters.push_back(new filter::Player(server));
+    filters.push_back(new filter::ROI((filter::Input*) filters[0]));
+    filter::ROI* roi = dynamic_cast<filter::ROI*>(*filters.rbegin());
+    filters.push_back(new filter::ANPR(*filters.rbegin(), roi->roi));
+}
+
+static void loop() {
+
+    while (true) {
+
+        for(auto el: filters) el->apply(0);
+
+        cv::imshow("VID", (*filters.rbegin())->frame() );
+        if (cv::waitKey(5)==27) break;
+    }
+}
+
+static void clear() {
+
+    for (auto el: filters) delete el;
+    filters.resize(0);
+    cv::destroyWindow("VID");
+}
 
 int main (int argc, char** argv) {
-    
-    rtmp::Client client;
-    if (!client.connect(server)) {
 
-        LOGE("Could not connect server\n")
-        return 1;
+    int result=0;
+    try{
+        init();
+        loop();
+        clear();
+    } catch (std::exception& e) {
+        LOGI("%s", e.what())
+        result = 1;
     }
-    LOGI("Begin play\n")
-    client.play();
+    LOGI("End")
     
-    ScalerPar params {
-        client.codec_ctx->width, client.codec_ctx->height, 
-        client.codec_ctx->pix_fmt, 
-        client.codec_ctx->width, client.codec_ctx->height, 
-        AV_PIX_FMT_BGR24, 
-        SWS_BILINEAR
-    };
-
-    Scaler scaler = {[] (const ScalerPar& params)   { 
-        return sws_getContext(
-            params.src_width, params.src_height, params.srcFormat, 
-            params.dst_width, params.dst_height, params.dstFormat, 
-            params.flags, nullptr, nullptr, nullptr); 
-
-        } (params), sws_freeContext
-    };
-    
-    Picture yuv;
-    cv::Mat image(client.codec_ctx->height, client.codec_ctx->width, CV_8UC3);
-    int cvLinesizes[]  { static_cast<int>(image.step1()) };
-    while (client.read(yuv)) {
-
-        sws_scale(scaler.get(), yuv->data, yuv->linesize, 0, client.codec_ctx->height, &image.data, cvLinesizes);
-        cv::imshow("VID", image);
-        client.reset();
-        if (cv::waitKey(10)==27) break;
-    }
-    cv::destroyWindow("VID");
-    LOGI("End\n")
+    return result;
 }

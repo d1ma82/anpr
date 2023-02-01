@@ -17,11 +17,13 @@ class MyGLView(context: Context, ip:String) : GLSurfaceView(context), View.OnCli
     private val render  = Render(this, camera, wrapper, context, ip)
 
     override fun onResume() {
+        Log.i(tag, "onResume")
         super.onResume()
         render.onResume()
     }
 
     override fun onPause() {
+        Log.i(tag, "onPause")
         render.onPause()
         super.onPause()
     }

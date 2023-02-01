@@ -2,7 +2,7 @@
 
 #include "camera.h"
 #include "basic_filters.h"
-#include "ffmpeg_filter.h"
+#include "streamer.h"
     
 static std::vector<filter::Filter*> filters;
 static const char* path = "data/shot.png";
@@ -65,9 +65,8 @@ Camera::Camera(
     render=new Render(preview, sensor_orientation);
  
     filters.push_back(new filter::Camera(preview, render->get_input())); 
-    filters.push_back(new filter::Rect((filter::Input*) filters[0], preview));
-    filters.push_back(new filter::RTMP(*filters.rbegin(), preview, fps, ip.c_str()));
-    filters.push_back(new filter::Frame(*filters.rbegin(), preview));
+    filters.push_back(new filter::RTMP(*filters.rbegin(), fps, ip.c_str()));
+    filters.push_back(new filter::Frame(*filters.rbegin()));
 
     render->attach_filters(filters);
     _characteristic[0] = render->get_input().texture;     // Need to sent camera texture to SurfaceTexture in android part

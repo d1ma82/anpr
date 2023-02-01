@@ -69,10 +69,12 @@ class Main: Activity() {
 
     override fun onResume() {
         super.onResume()
+        Log.i(tag, "onResume")
         fullscreenContent.onResume()
     }
 
     override fun onPause() {
+        Log.i(tag, "onPause")
         fullscreenContent.onPause()
         super.onPause()
     }

@@ -1,5 +1,10 @@
 #include <chrono>
-#include <EGL/egl.h>
+#ifdef ANDROID
+    #include <EGL/egl.h>
+#else
+    #pragma OPENCL EXTENSION cl_khr_icd : enable
+    #include <Windows.h>
+#endif
 #include "opencl.h"
 #include "opengl.h"
 #include "log.h"
@@ -94,7 +99,7 @@ static void dump() {
     try{
         std::vector<cv::ocl::PlatformInfo> infos;
         cv::ocl::getPlatfomsInfo(infos);
-
+        LOGI("Num platforms %d", (int)infos.size())
         for (auto& info: infos){
             
             cv::ocl::Device device;
@@ -170,6 +175,7 @@ static void callback(
 
 static void create_context() {
 
+#ifdef ANDROID
     EGLDisplay display = eglGetCurrentDisplay();
     if (display == EGL_NO_DISPLAY) LOGE("EGL_NO_DISPLAY, %x", eglGetError())
 
@@ -182,6 +188,14 @@ static void create_context() {
         CL_CONTEXT_PLATFORM, (cl_context_properties) current_platform,
         0
     };
+#else
+    cl_context_properties props[] {
+        CL_GL_CONTEXT_KHR, (cl_context_properties)  wglGetCurrentContext(),
+        CL_WGL_HDC_KHR, (cl_context_properties) wglGetCurrentDC(),
+        CL_CONTEXT_PLATFORM, (cl_context_properties) current_platform,
+        0
+    };
+#endif
     cl_device_type type;
     CALLCL(clGetDeviceInfo(current_device, CL_DEVICE_TYPE, sizeof(type), &type, nullptr))
     CALLCL2(context, clCreateContextFromType(props, type, callback, nullptr, &err))

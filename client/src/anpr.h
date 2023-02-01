@@ -1,9 +1,7 @@
 #pragma once
 
 #include "filter.h"
-#include "types.h"
-
-static const std::string debug = "/storage/emulated/0/Android/data/com.home.anpr/files/";
+#define IMGDEBUG
 
 struct Char {
     cv::UMat img;
@@ -20,22 +18,20 @@ struct Plate {
 };
 
 namespace filter {
-
 class ANPR: public Filter {
 private:
+    Filter* input;
+    cv::Rect roi;
     void detect_plates(cv::UMat& input,  Plate& plate);
     void detect_chars(Plate& plate);
     void classify_chars(Plate& plate);
 
 public:
-    const dims&     viewport;
-    Filter*         input;
-    cv::Rect        ROI_rect;
-    cv::UMat        ROI;
    
-    ANPR(Filter* filter_in, const dims& viewport_in, cv::Rect roi);
+    ANPR(Filter* in, cv::Rect roi_input);
     void apply(int);
-    cv::UMat& frame() noexcept { return input->frame(); }
+    cv::UMat frame() const  noexcept { return input->frame(); }
+    dims get_viewport() const noexcept { return input->get_viewport(); }
     ~ANPR() { }
 };
 }

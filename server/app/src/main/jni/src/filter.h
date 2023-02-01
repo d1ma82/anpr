@@ -1,17 +1,17 @@
 #pragma once
 #include <opencv2/core.hpp>
+#include "types.h"
 
 namespace filter {
-
-//using Frame = std::shared_ptr<cv::UMat>
 
 class Filter {
 protected:
     Filter() {}
 public:
     
-    virtual cv::UMat frame() noexcept =0;
+    virtual cv::UMat frame() const noexcept =0;
     virtual void apply(int orientation) =0;
+    virtual dims get_viewport() const noexcept=0;
     virtual ~Filter()=default;
 };
 
