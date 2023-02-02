@@ -66,8 +66,13 @@ void rtmp::Server::begin_stream(
     int dst_width, 
     int dst_height, 
     int fps, 
-    int bitrate
+    int bitrate,
+    int orientation
 ) {
+    char buf[sizeof(int)+1];
+    snprintf(buf, sizeof(int)+1, "%d%c", orientation, '\0');
+    CALL(av_dict_set(&format->metadata, "orientation", buf, 0))
+
     out_stream = avformat_new_stream(format.get(), out_codec);
     if (!out_stream) {
         LOGE("Could not allocate stream\n")
@@ -84,9 +89,7 @@ void rtmp::Server::begin_stream(
 
 bool rtmp::Server::encode_and_write_frame(Picture& picture) {
 
-    AVPacket pkt {};
     CALL(av_frame_make_writable(picture.operator->()))
-    
     picture->pts = frameindex++;  
     CALL(avcodec_send_frame(out_codec_ctx.get(), picture.operator->()))
     while (err>=0) {

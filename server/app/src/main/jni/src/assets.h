@@ -2,6 +2,9 @@
 
 #ifdef ANDROID
 #include <android/asset_manager.h>
+#else
+#include <sstream>
+#include <fstream>
 #endif
 
 #include "log.h"
@@ -56,6 +59,51 @@ class Asset {
         }
 
         void close() { delete[] content; count=0; AAsset_close(file); }
+        off_t size() const {return count;}
+};
+#else
+class Asset {
+    private:
+        off_t               count   {0};
+        std::ifstream       file;
+        std::stringstream   content;
+        const char*         content_ptr;
+    public:
+               // copy-move disabled
+        Asset(const Asset&) = delete;
+        Asset(Asset&&) = delete;
+        Asset& operator=(const Asset&) = delete;
+        Asset& operator=(Asset&&) = delete;
+
+        Asset() {}
+
+        bool open(const char* path) {
+
+            LOGI("Asset create %s", path)
+            file.open(path);
+
+            if (!file.is_open()) {
+
+                LOGE("Could not open asset, %s", path)
+                return false;
+            } else {
+                content << file.rdbuf();
+                count   =  content.str().size();
+                content_ptr = content.str().c_str(); 
+                LOGI("Asset opened OK %d bytes", (int)count)
+                return true;
+            }
+        }
+
+        ~Asset() {}
+
+        const char* read() {
+            
+            if (count<=0) {LOGE("Asset::get Could not read asset"); return nullptr; }
+            else return content_ptr;
+        }
+
+        void close() { file.close(); }
         off_t size() const {return count;}
 };
 #endif

@@ -10,7 +10,6 @@
 #include <opencv2/dnn.hpp>
 #include <opencv2/highgui.hpp>
 
-//#include "assets.h"
 #include "anpr.h"
 #include "log.h"
 
@@ -29,16 +28,9 @@ static const char strchars[]
     {'0','1','2','3','4','5','6','7','8','9','A', 'B', 'E', 'K', 'M', 'H',
      'O', 'P', 'C', 'T', 'Y', 'X'};
 
-static std::string to_str(int i) {
-    
-    std::stringstream ss;
-    ss<<i;
-    return ss.str();
-}
+static cv::Ptr<cv::ml::SVM> classifier {nullptr};
+static cv::dnn::Net net;
 
-//static cv::Ptr<cv::ml::SVM> classifier {nullptr};
-//static cv::dnn::Net net;
-/*
 static bool verify_char_sizes(cv::UMat input) {
 
     const float aspect        =   45.0f/77.0f;
@@ -105,10 +97,8 @@ static void segment_chars(Plate& plate) {
 
 static void train_plate_detector() {
 
-    if (! asset::manager->open("ml/SVM.xml")) return;
-
     cv::FileStorage fs;
-    fs.open(asset::manager->read(), cv::FileStorage::READ|cv::FileStorage::MEMORY);
+    fs.open("../ml/SVM.xml", cv::FileStorage::READ);
     cv::Mat SVM_training;
     cv::Mat SVM_classes;
     fs["TrainingData"] >> SVM_training;
@@ -130,7 +120,6 @@ static void train_plate_detector() {
         cv::ml::TrainData::create(SVM_training, cv::ml::ROW_SAMPLE, SVM_classes);
     
     classifier->train(data);
-    asset::manager->close();
 }
 
 static bool is_plate(cv::UMat sample) {
@@ -170,7 +159,7 @@ void filter::ANPR::detect_chars(Plate& plate) {
     segment_chars(plate);
 }
 
-void filter::ANPR::classify_chars(Plate& plate) {
+void filter::ANPR::classify_chars(cv::UMat& input, Plate& plate) {
 
     if (plate.chars.empty()) return;
     plate.text.clear();
@@ -187,7 +176,7 @@ void filter::ANPR::classify_chars(Plate& plate) {
         plate.text << strchars[pos.x]; 
     }     
     //LOGI("%s", plate.text.str().c_str())
-    cv::putText(ROI, plate.text.str(), plate.position.tl(), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255,0,0), 2);  
+    cv::putText(input, plate.text.str(), plate.position.tl(), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255,0,0), 2);  
 }
 
 static bool preprocess_and_check_is_plate(
@@ -330,7 +319,7 @@ static void flood(
             }
         }
     }
-}*/
+}
 
 
 void filter::ANPR::detect_plates(cv::UMat& input, Plate& plate) {
@@ -373,13 +362,13 @@ void filter::ANPR::detect_plates(cv::UMat& input, Plate& plate) {
         
         auto rect = cv::minAreaRect(*itc);
 
-      //  if (verify_plate_sizes(rect, 0)) rects.push_back(rect);
+        if (verify_plate_sizes(rect, 0)) rects.push_back(rect);
         ++itc;
     }
-#ifdef IMGDEBUG
-    cv::drawContours(input, contours, -1, cv::Scalar(255,0,0));
+#ifdef DEBUG
+    //cv::drawContours(input, contours, -1, cv::Scalar(255,0,0));
 #endif
-    //flood(input, gray, rects, plate);  
+    flood(input, gray, rects, plate);  
 }
 
 void filter::ANPR::apply(int) {
@@ -387,14 +376,12 @@ void filter::ANPR::apply(int) {
     Plate plate;
     cv::UMat ROI {input->frame()(roi)};
     detect_plates(ROI, plate);
-    //detect_chars(plate);
-    //classify_chars(plate); 
+    detect_chars(plate);
+    classify_chars(ROI, plate); 
 }
 
 filter::ANPR::ANPR(Filter* in, cv::Rect roi_input): input{in}, roi{roi_input} {
-        
-    //train_plate_detector();
-    //if (! asset::manager->open("ml/anpr_10.pb")) return;
-    //net = cv::dnn::readNetFromTensorflow(asset::manager->read(), asset::manager->size());
-    //asset::manager->close();
+
+    train_plate_detector();
+    net = cv::dnn::readNetFromTensorflow("../ml/anpr_10.pb");
 }

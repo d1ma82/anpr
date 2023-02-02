@@ -14,6 +14,7 @@ using high_resolution_clock = std::chrono::high_resolution_clock;
 class Server {
 public:
     int                 err             {0};
+    AVPacket            pkt             {};
     Format              format          {nullptr};
     const AVCodec*      out_codec       {nullptr};
     AVCodecID           codec_id        {AV_CODEC_ID_H264};
@@ -28,8 +29,8 @@ public:
     Server(const char* server_input);
     void set_options_and_open_encoder(int dst_width, int dst_height, int fps, int bitrate);
     bool listen();
-    void begin_stream(int dst_width, int dst_height, int fps, int bitrate);
-    bool encode_and_write_frame(Picture& picture);
-    ~Server() {}
+    void begin_stream(int dst_width, int dst_height, int fps, int bitrate, int orientation);
+    bool encode_and_write_frame(Picture&);
+    ~Server() { }
 };
 }

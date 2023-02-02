@@ -6,7 +6,7 @@ filter::Player::Player(const char* server) {
     if (!client.connect(server)) {
 
         LOGE("Could not connect server\n")
-        return;
+        abort();
     }
 
     LOGI("Begin play\n")

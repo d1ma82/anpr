@@ -8,6 +8,7 @@ using ServerPtr  = std::unique_ptr<rtmp::Server>;
 
 static bool thread_start {false};
 static bool frame_available {false};
+static int  orientation {0};
 
 static ServerPtr    srv;
 static Scaler       scaler;
@@ -47,7 +48,7 @@ static void init(
     }
 
     LOGI("Begin stream\n")
-    srv->begin_stream(dst.first, dst.second, fps.first, bitrate);
+    srv->begin_stream(dst.first, dst.second, fps.first, bitrate, orientation);
     srv->start_time=srv->clk.now();
 }
 
@@ -107,11 +108,12 @@ filter::RTMP::RTMP(
     }
 }
 
-void filter::RTMP::apply(int) {
+void filter::RTMP::apply(int new_orientation) {
 
     if (!frame_available) {
 
         frame().getMat(cv::ACCESS_READ).copyTo(frame_clone);
+        orientation = new_orientation;
         frame_available = true;
     }
 }

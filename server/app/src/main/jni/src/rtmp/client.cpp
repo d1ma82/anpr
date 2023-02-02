@@ -16,6 +16,8 @@ bool rtmp::Client::connect(const char* server) {
     AVFormatContext* ctx = format.get();
     CALL(avformat_open_input(&ctx, server, nullptr, nullptr)!=0)
     CALL(avformat_find_stream_info(ctx, nullptr))
+    orientation = av_dict_get(ctx->metadata, "orientation", nullptr, 0);
+    av_dump_format(ctx, 0, server, 0);
     return err>=0; 
 }
 
@@ -42,7 +44,7 @@ void rtmp::Client::stop() {
 bool rtmp::Client::read(Picture& pic) {
 
     if (av_read_frame(format.get(), &pkt)>=0) {
-       
+
         CALL(avcodec_send_packet(codec_ctx.get(), &pkt))
         CALL(avcodec_receive_frame(codec_ctx.get(), pic.operator->()))
         if (err==AVERROR(EAGAIN)) {av_packet_unref(&pkt); read(pic); }

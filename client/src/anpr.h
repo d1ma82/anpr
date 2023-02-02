@@ -24,7 +24,7 @@ private:
     cv::Rect roi;
     void detect_plates(cv::UMat& input,  Plate& plate);
     void detect_chars(Plate& plate);
-    void classify_chars(Plate& plate);
+    void classify_chars(cv::UMat& input, Plate& plate);
 
 public:
    
